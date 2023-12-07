@@ -133,7 +133,7 @@ void FtpServer::credentials( const char * _user, const char * _pass )
 {
   if( strlen( _user ) > 0 && strlen( _user ) < FTP_CRED_SIZE )
 //    strcpy( user, _user );
-	  this->user = _user;
+	  this->user = user;
   if( strlen( _pass ) > 0 && strlen( _pass ) < FTP_CRED_SIZE )
 //    strcpy( pass, _pass );
 	  this->pass = _pass;
@@ -1191,6 +1191,7 @@ bool FtpServer::doStore()
     return true;
   }
   client.println(F("552 Probably insufficient storage space") );
+  Serial.println(F("552 Probably insufficient storage space") );
   file.close();
   data.stop();
   return false;
@@ -1630,7 +1631,7 @@ bool FtpServer::doMlsd()
 		  DEBUG_PRINTLN("DIR NEXT ");
 		char dtStr[ 15 ];
 
-		// struct tm * timeinfo;
+		struct tm * timeinfo;
 
 		strcpy(dtStr, "19700101000000");
 
@@ -2315,7 +2316,7 @@ bool FtpServer::getFileModTime( uint16_t * pdate, uint16_t * ptime )
 }
 #endif
 
-#if (STORAGE_TYPE == STORAGE_SD || STORAGE_TYPE == STORAGE_SD_MMC) && !defined(ESP32)
+#if STORAGE_TYPE == STORAGE_SD ||  STORAGE_TYPE == STORAGE_SD_MMC
   bool     FtpServer::rename( const char * path, const char * newpath ){
 
 		FTP_FILE myFileIn = STORAGE_MANAGER.open(path, FILE_READ);

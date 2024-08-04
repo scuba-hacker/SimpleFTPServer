@@ -7,10 +7,16 @@
  *
  */
 
+/*
+###############      
+###############      RUN FTP SERVER CODE CONNECTED TO BATTERY AND NOT USB AS USB NOT ENOUGH POWER
+###############      
+*/
 #include <Arduino.h>
 #include <mercator_secrets.c>
 #include <WiFi.h>
 #include "SD.h"
+#include <memory.h>
 
 #include <SD-card-API.h>
 
@@ -21,7 +27,6 @@ const char* password = password_1;
 
 FtpServer ftpSrv;   //set #define FTP_DEBUG in ESP8266FtpServer.h to see ftp verbose on serial
 
-void formatFlashCard() ;
 
 void _callback(FtpOperation ftpOperation, unsigned int freeSpace, unsigned int totalSpace)
 {
@@ -42,8 +47,8 @@ void _callback(FtpOperation ftpOperation, unsigned int freeSpace, unsigned int t
 };
 
 void _transferCallback(FtpTransferOperation ftpOperation, const char* name, unsigned int transferredSize){
-	Serial.print(">>>>>>>>>>>>>>> _transferCallback " );
-	Serial.print(ftpOperation);
+//	Serial.print(">>>>>>>>>>>>>>> _transferCallback " );
+//	Serial.print(ftpOperation);
 	/* FTP_UPLOAD_START = 0,
 	 * FTP_UPLOAD = 1,
 	 *
@@ -58,10 +63,10 @@ void _transferCallback(FtpTransferOperation ftpOperation, const char* name, unsi
 	 * FTP_DOWNLOAD_ERROR = 5,
 	 * FTP_UPLOAD_ERROR = 5
 	 */
-	Serial.print(" ");
-	Serial.print(name);
-	Serial.print(" ");
-	Serial.println(transferredSize);
+//	Serial.print(" ");
+//	Serial.print(name);
+//	Serial.print(" ");
+//	Serial.println(transferredSize);
 };
 
 #define SCK_BAZ 4
@@ -70,6 +75,9 @@ void _transferCallback(FtpTransferOperation ftpOperation, const char* name, unsi
 #define SS_BAZ 7 
 
 const int beetleLed = 10;
+
+void DumpSDStats();
+void dumpHeapUsage(const char* msg);
 
 void setup(void)
 {
@@ -90,7 +98,6 @@ void setup(void)
     Serial.println("Warming up...");
   }
   Serial.println("\nHere we go...");
-
   
   WiFi.begin(ssid, password);
   Serial.println("");
@@ -110,13 +117,15 @@ void setup(void)
 
 // both disabled, trying to make upload more reliable.
 //
-// SPI.setFrequency(500000);
+//  SPI.setFrequency(500000);
 //  SPI.setClockDivider(SPI_CLOCK_DIV32);
   
   /////FTP Setup, ensure SPIFFS is started before ftp;  /////////
   SPI.begin(SCK_BAZ, MISO_BAZ, MOSI_BAZ, SS_BAZ); //SCK, MISO, MOSI,SS
 
-  if (SD.begin(SS_BAZ, SPI/*, 500000*/))
+  dumpHeapUsage("Heap prior to SD.begin");
+
+  if (SD.begin(SS_BAZ, SPI, 1000000, "/sd", 5, true))
   {
       Serial.println("SD opened!");
 
@@ -128,7 +137,52 @@ void setup(void)
       delay(2000);
       ftpSrv.begin("esp32","esp32","Welcome Baz");    //username, password for ftp.   (default 21, 50009 for PASV)
 
-      mercatorFS::listDir(SD, "/", 1);
+      DumpSDStats();
+      dumpHeapUsage("Heap after listDir");
+  }
+}
+
+void DumpSDStats()
+{
+  switch (SD.cardType()) 
+  {
+    case CARD_NONE:
+      Serial.println("No SD card attached");
+      return;
+    case CARD_MMC:
+      Serial.println("MMC card");
+      break;
+    case CARD_SD:
+      Serial.println("SD card");
+      break;
+    case CARD_SDHC:
+      Serial.println("SDHC card");
+      break;
+    case CARD_UNKNOWN:
+      Serial.println("Unknown card");
+      break;
+    default:
+      Serial.println("Error (unknown card type)");
+      return;    
+  }
+
+  Serial.print("Sectors:          ");
+  Serial.println(SD.numSectors());
+  Serial.print("Sector Size:          ");
+  Serial.println(SD.sectorSize());
+  Serial.print("Total Bytes:          ");
+  Serial.println(SD.totalBytes());  
+  Serial.print("Used Bytes:          ");
+  Serial.println(SD.usedBytes());  
+}
+
+void dumpHeapUsage(const char* msg)
+{  
+  if (true)
+  {
+    multi_heap_info_t info; 
+    heap_caps_get_info(&info, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT); // internal RAM, memory capable to store data or to create new task
+    Serial.printf("\n%s : free heap bytes: %i  largest free heap block: %i min free ever: %i\n",  msg, info.total_free_bytes, info.largest_free_block, info.minimum_free_bytes);
   }
 }
 

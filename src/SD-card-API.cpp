@@ -4,7 +4,10 @@
 #include "SD.h"
 #include "SPI.h"
 
-void mercatorFS::listDir(fs::FS &fs, const char * dirname, uint8_t levels){
+void mercatorFS::listDir(fs::FS &fs, const char * dirname, uint8_t levels)
+{
+    int usedBytes = 0;
+
     Serial.printf("Listing directory: %s\n", dirname);
 
     File root = fs.open(dirname);
@@ -30,9 +33,12 @@ void mercatorFS::listDir(fs::FS &fs, const char * dirname, uint8_t levels){
             Serial.print(file.name());
             Serial.print("  SIZE: ");
             Serial.println(file.size());
+            usedBytes += file.size();
         }
         file = root.openNextFile();
     }
+
+    printf("****** TOTAL BYTES FROM LISTDIR = %i *****\n\n", usedBytes);
 }
 
 void mercatorFS::createDir(fs::FS &fs, const char * path){
